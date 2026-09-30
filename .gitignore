@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Data — keep the small eval results checked in, but not huge raw PR diffs
+data/bun_prs.json
+data/bun_pr_index.json
+data/labeled_dataset.json
+data/raw_prs.json
+# Note: routing_decisions.json + bun_evaluation.json are small and useful to keep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log

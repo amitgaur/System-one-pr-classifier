@@ -1,0 +1,34 @@
+[
+  {
+    "pr": "amitgaur/interview-drills#135",
+    "title": "docs: clarify site delivery, credentials, and rollback",
+    "pr_kind": "docs_only",
+    "risk_score": "low",
+    "tier": "cheap",
+    "flags": []
+  },
+  {
+    "pr": "amitgaur/off-the-shot#1",
+    "title": "Launch-ops operator pack: $200 validation test (verified)",
+    "pr_kind": "experimental_branch",
+    "risk_score": "low",
+    "tier": "cheap",
+    "flags": []
+  },
+  {
+    "pr": "amitgaur/mywebsite#3",
+    "title": "Add LiveKit voice agent blueprint page with use cases and build plan",
+    "pr_kind": "docs_only",
+    "risk_score": "low",
+    "tier": "cheap",
+    "flags": []
+  },
+  {
+    "pr": "amitgaur/mywebsite#1",
+    "title": "Add simple personal website",
+    "pr_kind": "docs_only",
+    "risk_score": "low",
+    "tier": "cheap",
+    "flags": []
+  }
+]

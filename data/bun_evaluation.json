@@ -1,0 +1,271 @@
+{
+  "full": {
+    "scores": {
+      "per_class": {
+        "bug_fix": {
+          "P": 0.231,
+          "R": 1.0,
+          "F1": 0.375,
+          "TP": 6,
+          "FP": 20,
+          "FN": 0,
+          "support": 6
+        },
+        "ci_workflow": {
+          "P": 1.0,
+          "R": 0.333,
+          "F1": 0.5,
+          "TP": 2,
+          "FP": 0,
+          "FN": 4,
+          "support": 6
+        },
+        "config_or_secret": {
+          "P": 0.0,
+          "R": 0.0,
+          "F1": 0.0,
+          "TP": 0,
+          "FP": 1,
+          "FN": 0,
+          "support": 0
+        },
+        "docs_only": {
+          "P": 0.636,
+          "R": 1.0,
+          "F1": 0.778,
+          "TP": 7,
+          "FP": 4,
+          "FN": 0,
+          "support": 7
+        },
+        "feature": {
+          "P": 0.625,
+          "R": 0.263,
+          "F1": 0.37,
+          "TP": 5,
+          "FP": 3,
+          "FN": 14,
+          "support": 19
+        },
+        "mixed_or_unclear": {
+          "P": 0.5,
+          "R": 0.667,
+          "F1": 0.571,
+          "TP": 2,
+          "FP": 2,
+          "FN": 1,
+          "support": 3
+        },
+        "refactor": {
+          "P": 0.0,
+          "R": 0.0,
+          "F1": 0.0,
+          "TP": 0,
+          "FP": 0,
+          "FN": 7,
+          "support": 7
+        },
+        "schema_or_migration": {
+          "P": 0.0,
+          "R": 0.0,
+          "F1": 0.0,
+          "TP": 0,
+          "FP": 2,
+          "FN": 0,
+          "support": 0
+        },
+        "test_only": {
+          "P": 1.0,
+          "R": 0.143,
+          "F1": 0.25,
+          "TP": 1,
+          "FP": 0,
+          "FN": 6,
+          "support": 7
+        }
+      },
+      "macro_F1": 0.406
+    },
+    "report": {
+      "mode": "full",
+      "n": 55,
+      "confusion": {
+        "bug_fix": {
+          "bug_fix": 6,
+          "test_only": 5,
+          "mixed_or_unclear": 1,
+          "ci_workflow": 3,
+          "feature": 8,
+          "refactor": 3
+        },
+        "feature": {
+          "test_only": 1,
+          "feature": 5,
+          "ci_workflow": 1,
+          "refactor": 1
+        },
+        "config_or_secret": {
+          "feature": 1
+        },
+        "docs_only": {
+          "docs_only": 7,
+          "feature": 1,
+          "refactor": 3
+        },
+        "mixed_or_unclear": {
+          "mixed_or_unclear": 2,
+          "feature": 2
+        },
+        "ci_workflow": {
+          "ci_workflow": 2
+        },
+        "schema_or_migration": {
+          "feature": 2
+        },
+        "test_only": {
+          "test_only": 1
+        }
+      },
+      "by_predicted": {
+        "bug_fix": 26,
+        "feature": 8,
+        "config_or_secret": 1,
+        "docs_only": 11,
+        "mixed_or_unclear": 4,
+        "ci_workflow": 2,
+        "schema_or_migration": 2,
+        "test_only": 1
+      },
+      "by_gold": {
+        "bug_fix": 6,
+        "test_only": 7,
+        "feature": 19,
+        "docs_only": 7,
+        "mixed_or_unclear": 3,
+        "ci_workflow": 6,
+        "refactor": 7
+      }
+    }
+  },
+  "title_only": {
+    "scores": {
+      "per_class": {
+        "bug_fix": {
+          "P": 0.214,
+          "R": 1.0,
+          "F1": 0.353,
+          "TP": 6,
+          "FP": 22,
+          "FN": 0,
+          "support": 6
+        },
+        "ci_workflow": {
+          "P": 0.667,
+          "R": 0.333,
+          "F1": 0.444,
+          "TP": 2,
+          "FP": 1,
+          "FN": 4,
+          "support": 6
+        },
+        "docs_only": {
+          "P": 0.5,
+          "R": 0.429,
+          "F1": 0.462,
+          "TP": 3,
+          "FP": 3,
+          "FN": 4,
+          "support": 7
+        },
+        "feature": {
+          "P": 0.462,
+          "R": 0.316,
+          "F1": 0.375,
+          "TP": 6,
+          "FP": 7,
+          "FN": 13,
+          "support": 19
+        },
+        "mixed_or_unclear": {
+          "P": 0.4,
+          "R": 0.667,
+          "F1": 0.5,
+          "TP": 2,
+          "FP": 3,
+          "FN": 1,
+          "support": 3
+        },
+        "refactor": {
+          "P": 0.0,
+          "R": 0.0,
+          "F1": 0.0,
+          "TP": 0,
+          "FP": 0,
+          "FN": 7,
+          "support": 7
+        },
+        "test_only": {
+          "P": 0.0,
+          "R": 0.0,
+          "F1": 0.0,
+          "TP": 0,
+          "FP": 0,
+          "FN": 7,
+          "support": 7
+        }
+      },
+      "macro_F1": 0.305
+    },
+    "report": {
+      "mode": "title-only",
+      "n": 55,
+      "confusion": {
+        "bug_fix": {
+          "bug_fix": 6,
+          "test_only": 5,
+          "docs_only": 2,
+          "mixed_or_unclear": 1,
+          "ci_workflow": 3,
+          "feature": 8,
+          "refactor": 3
+        },
+        "feature": {
+          "test_only": 2,
+          "feature": 6,
+          "docs_only": 2,
+          "ci_workflow": 1,
+          "refactor": 2
+        },
+        "docs_only": {
+          "docs_only": 3,
+          "feature": 1,
+          "refactor": 2
+        },
+        "mixed_or_unclear": {
+          "mixed_or_unclear": 2,
+          "feature": 3
+        },
+        "ci_workflow": {
+          "ci_workflow": 2,
+          "feature": 1
+        }
+      },
+      "by_predicted": {
+        "bug_fix": 28,
+        "feature": 13,
+        "docs_only": 6,
+        "mixed_or_unclear": 5,
+        "ci_workflow": 3
+      },
+      "by_gold": {
+        "bug_fix": 6,
+        "test_only": 7,
+        "feature": 19,
+        "docs_only": 7,
+        "mixed_or_unclear": 3,
+        "ci_workflow": 6,
+        "refactor": 7
+      }
+    }
+  }
+}
