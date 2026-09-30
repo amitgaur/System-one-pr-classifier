@@ -160,8 +160,11 @@ class PRClassification(BaseModel):
 
 
 # --- Signal rules ---------------------------------------------------------
-DOCS_FILE = re.compile(r"^(\.github/|docs/|README\.md|CHANGELOG|.*\.mdx?$)", re.I)
-TEST_FILE = re.compile(r"^tests?/|/test_|/tests?\.|\.(test|spec)\.|_test\.py$", re.I)
+DOCS_FILE = re.compile(r"^(\.github/(?!workflows/|actions/)|docs/|README\.md|CHANGELOG|.*\.mdx?$)", re.I)
+TEST_FILE = re.compile(
+    r"(?:^|/)tests?(?:/|$)|(?:^|/)(?:test|tests)/|\.(test|spec)\.|_test\.(py|ts|js|zig|rs|go|java)$",
+    re.I,
+)
 SECRET_FILE = re.compile(r"(\.env(\..+)?$|\.pem$|\.key$|secrets?\.(ya?ml|json)|credentials?\.json)", re.I)
 AUTH_FILE = re.compile(
     r"(/auth/|/login/|/oauth/|/session/|/jwt/|/token/|/permissions?/|/rbac/|/middleware/auth)",
@@ -169,6 +172,26 @@ AUTH_FILE = re.compile(
 )
 DB_OR_MIGRATION = re.compile(r"(/migrations?/|/schema\.|\.sql$|prisma/|drizzle/|/alembic/)", re.I)
 CI_FILE = re.compile(r"^(\.github/workflows/|\.circleci/|gitlab-ci|\.drone|azure-pipelines|\.github/actions/)", re.I)
+# Build/CI surface extensions (Makefiles, Dockerfiles, devcontainer, etc.)
+# Note: each alternative is a *substring* match, NOT anchored at $.
+# .devcontainer/, .vscode/, etc. can have any filename after.
+BUILD_FILE = re.compile(
+    r"(?:^|/)("
+    r"Makefile|makefile|"
+    r"Dockerfile(?:\..+)?|docker-compose[^/]*|"
+    r".+\.mk|"
+    r".devcontainer|"
+    r"\.vscode|"
+    r"CMakeLists\.txt|"
+    r"Brewfile|renovate\.json(?:\.5)?|"
+    r"\.npmrc|\.nvmrc|\.node-version|\.tool-versions|"
+    r"\.gitignore|\.dockerignore|\.editorconfig|"
+    r".+\.sh|"
+    r".+\.bash|"
+    r".+\.zsh"
+    r")",
+    re.I,
+)
 K8S_FILE = re.compile(r"(kustomization\.ya?ml|values\.ya?ml|\.helm/|/charts/|deployment\.ya?ml|statefulset\.ya?ml|cronjob\.ya?ml)", re.I)
 CONFIG_FILE = re.compile(r"(^config/|/config\.|tsconfig|pyproject\.toml|setup\.cfg|poetry\.lock|pnpm-lock|yarn\.lock|package-lock|composer\.json|cargo\.toml)")
 LOCKFILE_ONLY = re.compile(r"^(\S*/)?(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|composer\.lock|Cargo\.lock|go\.sum|uv\.lock)$", re.I)
@@ -197,7 +220,7 @@ def _detect_surfaces(file_paths: list[str], diff: str) -> tuple[list[Surface], d
     """Return (matched surfaces, debug signal map)."""
     signals: dict[str, list[str]] = {
         "docs": [], "test": [], "secret": [], "auth": [], "db": [],
-        "ci": [], "k8s": [], "config": [], "lockfile": [], "generated": [],
+        "ci": [], "build_file": [], "k8s": [], "config": [], "lockfile": [], "generated": [],
         "public_api": [], "file_serving": [], "path": [], "crypto": [],
         "concurrency": [], "app_code": [],
     }
@@ -221,6 +244,8 @@ def _detect_surfaces(file_paths: list[str], diff: str) -> tuple[list[Surface], d
             add("db", "schema_migration", path)
         if CI_FILE.match(path):
             add("ci", "build_ci", path)
+        if BUILD_FILE.search(path):
+            add("build_file", "build_ci", path)
         if K8S_FILE.search(path):
             add("k8s", "infra_k8s", path)
         if CONFIG_FILE.search(path):
@@ -241,7 +266,7 @@ def _detect_surfaces(file_paths: list[str], diff: str) -> tuple[list[Surface], d
             add("concurrency", "app_code", path)
         # Files that don't match any other pattern default to app_code
         if "app_code" not in surfaces and not any(
-            signals[k] for k in ["docs", "test", "ci", "k8s", "lockfile", "generated"]
+            signals[k] for k in ["docs", "test", "ci", "build_file", "k8s", "lockfile", "generated"]
         ):
             add("app_code", "app_code", path)
 
@@ -371,24 +396,69 @@ def classify_pr_ontology(
     total_changes = additions + deletions
 
     # --- Layer 1: intent detection ----------------------------------------
+    # INVARIANT: diff signals (file paths + content) trump title heuristics
+    # when the surface is unambiguous. Title is only the fallback when the
+    # surface is mixed or empty.
     intent: Intent | None = None
+
+    n_test = len(signals.get("test", []))
+    n_app = sum(1 for p in file_paths
+                if not TEST_FILE.match(p) and not DOCS_FILE.match(p)
+                and not CI_FILE.match(p) and not BUILD_FILE.search(p)
+                and not CONFIG_FILE.search(p) and not LOCKFILE_ONLY.match(p)
+                and not GENERATED.match(p))
 
     # Renovation digest-only (lockfile only)
     if n_files and all(LOCKFILE_ONLY.match(p) for p in file_paths):
         intent = "chore"  # but with T0_skip tier
-    elif surfaces == ["build_ci"]:
+
+    # Surface-conditional rules (DIFF WINS OVER TITLE)
+    # 1. Pure surface: every file is the same category -> that category wins
+    if surfaces and all(s == "build_ci" for s in surfaces):
         intent = "build_ci"
-    elif surfaces == ["documentation"] or (surfaces and all(s == "documentation" for s in surfaces)):
+    elif surfaces and all(s == "documentation" for s in surfaces):
         intent = "docs"
-    elif surfaces == ["test_code"] or (surfaces and all(s == "test_code" for s in surfaces)):
+    elif surfaces and all(s == "test_code" for s in surfaces):
         intent = "test"
-    elif surfaces == ["dep_upgrade"]:
+    elif surfaces and all(s == "dep_upgrade" for s in surfaces):
         intent = "chore"
-    else:
-        # Fall back to title heuristics, BUT docs surface wins over title
-        if surfaces and all(s == "documentation" for s in surfaces):
-            intent = "docs"
-        elif TITLE_REVERT.search(text):
+    elif surfaces and all(s == "schema_migration" for s in surfaces):
+        intent = "feature"  # schema work is typically a feature
+    # 2. Mixed surface: test dominates -> test wins
+    elif n_test > 0 and n_test > n_app:
+        intent = "test"
+    # 3. Mixed but mostly build/CI + docs (e.g. devcontainer + README)
+    elif "build_ci" in surfaces and "documentation" not in surfaces and "app_code" not in surfaces:
+        intent = "build_ci"
+    # 3b. Build/CI dominates over a small app_code presence
+    elif ("build_ci" in surfaces
+          and "documentation" not in surfaces
+          and len(signals.get("ci", [])) + len(signals.get("build_file", [])) >= max(1, n_app)):
+        intent = "build_ci"
+    # 4. Surface clear (one signal, no app_code)
+    elif len(surfaces) == 1 and "app_code" not in surfaces:
+        # Trust the single surface signal
+        intent_map = {
+            "build_ci": "build_ci",
+            "documentation": "docs",
+            "test_code": "test",
+            "schema_migration": "feature",
+            "config": "chore",
+            "infra_k8s": "build_ci",
+            "generated_bundle": "chore",
+        }
+        intent = intent_map.get(surfaces[0])
+
+    # Title indicates test-scope work (Conventional Commit "test:" prefix or
+    # bracketed "(test)" / "(bun:test)" prefix), regardless of surface mix.
+    if intent in ("bug_fix", "feature", "refactor"):
+        if re.match(r"^\s*(test|tests)\s*(\(|:)", title):
+            if n_test > 0:
+                intent = "test"
+
+    # Fallback: title heuristics, ONLY when surface is ambiguous
+    if intent is None:
+        if TITLE_REVERT.search(text):
             intent = "revert"
         elif TITLE_SECURITY.search(text):
             intent = "security_patch"
