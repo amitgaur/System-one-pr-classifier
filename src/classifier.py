@@ -271,10 +271,14 @@ def _detect_surfaces(file_paths: list[str], diff: str) -> tuple[list[Surface], d
             add("app_code", "app_code", path)
 
     # Ensure app_code is included if the diff shows actual source changes
-    # BUT don't override when the change is purely documentation.
-    if (any(ext in diff[:30000] for ext in [".ts",".js",".py",".rs",".go",".java"])
+    # AND if the file mix is not purely documentation.
+    # Bug fix: previously `surfaces != ["documentation"]` was too restrictive —
+    # if a CHANGELOG.md was the first file processed, surfaces became
+    # ["documentation"] and this rule was skipped, leaving 73 .py files
+    # unaccounted for.
+    if (any(ext in diff[:30000] for ext in [".ts",".js",".py",".rs",".go",".java",".kt",".swift",".mjs",".cjs",".tsx",".jsx"])
             and "app_code" not in surfaces
-            and surfaces != ["documentation"]):
+            and any(not DOCS_FILE.match(p) for p in file_paths)):
         surfaces.append("app_code")
 
     return surfaces, signals
