@@ -205,7 +205,25 @@ EXPERIMENTAL_BRANCH = re.compile(r"(worktree-|/wip|/wip-|/worktree-|/experimenta
 
 # Title heuristics
 TITLE_BUG = re.compile(r"\b(fix|bug|broken|crash|error|exception|regression|null|undefined|typo)\b", re.I)
-TITLE_FEATURE = re.compile(r"\b(feat|feature|add|support|introduce|enable|allow|implement)\b", re.I)
+TITLE_FEATURE = re.compile(
+    r"\b(feat|feature|add|support|introduce|enable|allow|implement|"
+    r"new|update to|update .* (to|for|with)|"
+    r"add (a |an )?new|"
+    r"enhance|improve\b|initial\b|initial support\b|"
+    r"add\b.+ (api|function|method|class|module|support|capability)|"
+    r"first (version|release|impl)|"
+    r"vendor\b|re-?vendor\b|"
+    r"adds?\b.+ (api|functionality|capability)|"
+    r"migrate\b|migration\b|"
+    r"deprecat|"
+    r"compatibility\b|"
+    r"compatibility (with|for)|"
+    r"(add|enable) .* (support|capability)|"
+    r"(?:^|\W)(sdk|api|cli|gui|ui|frontend|backend):|"
+    r"refining|refine\b|abstraction\b|"
+    r"(?:^|\W)(?:tutorial|example|integration)\b)\b",
+    re.I,
+)
 TITLE_REFACTOR = re.compile(r"\b(refactor|cleanup|clean up|reorganize|rename|restructure|simplify)\b", re.I)
 TITLE_DOCS = re.compile(r"\b(docs?|documentation|readme|comment)\b", re.I)
 TITLE_DEPEND = re.compile(r"\b(deps?|dependency|dependabot|renovate|bump|upgrade)\b", re.I)
