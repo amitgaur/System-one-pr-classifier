@@ -394,7 +394,10 @@ def classify_pr_ontology(
 ) -> PRClassification:
     """Classify a PR using the layered ontology."""
     n_files = len(file_paths)
-    text = f"{title.strip()}\n{(body or '')[:2000]}".strip()
+    # text = title only (title heuristic should not be polluted by body content)
+    # body_used_for = body used for content-based signals but NOT for title matching
+    text = title.strip()
+    body_text = (body or "")[:2000]
 
     surfaces, signals = _detect_surfaces(file_paths, diff)
     total_changes = additions + deletions
