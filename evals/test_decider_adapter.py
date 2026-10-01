@@ -30,8 +30,8 @@ def test_fallback_without_decider():
         "bug_fix", "feature", "docs", "test", "build_ci", "chore", "perf",
         "refactor", "revert", "security_patch", "mixed_or_unclear",
     )
-    # Without decider, result should equal rule-based result
-    assert HAS_DECIDER is False  # in this environment
+    # Without decider OR with decider — both paths should return a valid PRClassification
+    # (When decider IS installed, it may or may not be used depending on confidence.)
 
 
 def test_state_building():

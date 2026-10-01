@@ -1,1 +1,9 @@
 pydantic>=2.0
+datasets>=2.14
+
+# Optional: open-weight Jev-class decision models
+# Install with: pip install decider-ai (only on GPU; uses Triton kernels)
+
+# Optional: train our own Jev-shape models from scratch
+# Install with: pip install -e /tmp/jevlike (or wherever you clone https://github.com/vinnylarouge/jevlike)
+# Requires: torch>=2.2, transformers>=4.45

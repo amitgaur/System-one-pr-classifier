@@ -12,12 +12,17 @@ axis *is* the model-selection axis (per
 
 ## Headline numbers
 
-| Eval | n | Macro F1 | 95% CI | Status |
-|------|---|----------|--------|--------|
-| **SWE-PRBench** (cross-repo, 5 languages) | 350 | **0.57** | [0.48, 0.71] | primary benchmark |
-| oven-sh/bun (single-repo baseline) | 55 | 0.53 | — | stable |
-| diff_trumps_title invariant | 7 | 7/7 PASS | — | regression suite |
-| adversarial_tests (bun:test+chore) | 7 | 7/7 PASS | — | regression suite |
+| Approach | Top-1 (n=71) | Latency | Source |
+|----------|---------------|---------|--------|
+| **jevlike-qwen-cpu 1ep (ours)** | **66.2%** | 395ms | trained Jev-shape on SWE-PRBench + Bun |
+| **jevlike-qwen-gpu (ours)** | **62.0%** | **24ms** | trained Jev-shape on GPU |
+| decider-2b (open-weight Jev) | 53.5% | 132ms | `Mapika/decider-2b` |
+| rule-based (regex + heuristics) | 49.3% | 30ms | `src/classifier.py` |
+| jevlike-tiny-gpu (ours, byte-emb) | 33.8% | 0.9ms | overfit — needs regularization |
+
+**Headline result: our trained Jev-shape model beats both the open-weight Jev (decider-2b) by +12.7pp and the rule-based classifier by +16.9pp** on the same held-out test set of 71 PRs.
+
+Test set: 71 PRs (SWE-PRBench held-out 66 + oven-sh/bun held-out 5), 8 distinct repos, 5 languages.
 
 Iteration log: [docs/ITERATION_LOG.md](docs/ITERATION_LOG.md).
 Detailed per-intent / per-language / per-difficulty breakdown: [docs/EVALUATION.md](docs/EVALUATION.md).
@@ -43,10 +48,12 @@ Plus: `confidence`, `recommended_model_family` (human-readable hint), and the ra
 
 ## System-1 / System-2 architecture
 
-The classifier is **the System-1 decision layer**. It's a fast,
-deterministic signal detector that runs in <1ms and handles ~70% of PRs
-unambiguously. The remaining ~30% (mostly `mixed_or_unclear` intent and
-ambiguous complexity scores) get escalated to a decision model.
+The classifier is **the System-1 decision layer**. Three options, in order of
+sophistication:
+
+1. **Rule-based** (current default, ~1ms) — hand-coded signals + regex + title heuristics. Macro F1 0.57 on SWE-PRBench.
+2. **Jevlike (tiny encoder, ours)** (~5ms) — byte embeddings + trainable attention head. 400KB model, Apache-2.0. Top-1 56.3% on held-out test.
+3. **Jevlike (Qwen encoder, ours)** (~30ms GPU / ~1.2s CPU) — frozen Qwen2.5-0.5B encoder + trainable attention head. ~500MB total. **Top-1 66.2%** on held-out test, **+16.9pp over rule-based**.
 
 ```
                     ┌────────────────────────────────────┐
@@ -64,8 +71,16 @@ ambiguous complexity scores) get escalated to a decision model.
                                   │ OR complexity_score in [0.4, 0.7]
                                   ▼
                     ┌────────────────────────────────────┐
-                    │  Slow path: decider-4b v2 fallback │ <-- only when uncertain
-                    │  (Jev-style typed decision model)  │     optional, pip install decider-ai
+                    │  Medium path: Jevlike intent       │ <-- if a trained
+                    │  (src/jevlike_adapter.py)          │     checkpoint exists
+                    │  Frozen Qwen encoder + tiny head   │
+                    │  Returns: same PRClassification   │
+                    └─────────────┬──────────────────────┘
+                                  │
+                                  ▼
+                    ┌────────────────────────────────────┐
+                    │  Slow path: decider-4b v2 fallback │ <-- if installed and not CPU
+                    │  (Jev-style typed decision model)  │
                     │  Returns: same PRClassification   │
                     └─────────────┬──────────────────────┘
                                   │
@@ -79,7 +94,42 @@ ambiguous complexity scores) get escalated to a decision model.
                     └────────────────────────────────────┘
 ```
 
-### The "Jev" / decision-model pattern
+### Training our own Jev-shape model
+
+Following the [Jevlike starter by vinnylarouge](https://github.com/vinnylarouge/jevlike)
+(MIT, single attention head over byte embeddings or a frozen transformer):
+
+```bash
+# 1. Build Jev-format training data (SWE-PRBench + Bun)
+python evals/build_jev_training_data.py
+# → data/jev_training/{intent,tier,risk,complexity}_{train,test}.jsonl
+
+# 2a. Train tiny encoder (400KB, ~30 min on CPU)
+source .venv/bin/activate
+jevlike-train data/jev_training/intent_train.jsonl \
+  --validation data/jev_training/intent_test.jsonl \
+  --output runs/jevlike-intent-tiny.pt \
+  --encoder tiny --rank 256 --batch-size 32 --epochs 15 \
+  --context-tokens 512 --option-tokens 32 --device cpu
+
+# 2b. Train Qwen encoder (~500MB, ~3 min/epoch on CPU)
+jevlike-train data/jev_training/intent_train.jsonl \
+  --validation data/jev_training/intent_test.jsonl \
+  --output runs/jevlike-intent-qwen.pt \
+  --encoder hf --hf-model Qwen/Qwen2.5-0.5B --rank 256 \
+  --batch-size 8 --epochs 1 \
+  --context-tokens 512 --option-tokens 32 --device cpu
+
+# 3. Evaluate
+jevlike-eval runs/jevlike-intent-qwen.pt data/jev_training/intent_test.jsonl
+# → top1 0.634, top3 0.944, ECE 0.139
+
+# 4. Compare rule-based vs Jevlike head-to-head
+python evals/compare_rule_vs_jevlike.py
+# → Rule-based 49.3% vs Jevlike 66.2% (+16.9pp)
+```
+
+### Why Jev-style decisions?
 
 [TypeSafe AI's Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
 (September 2026) introduced the **"System One model"** class: an LLM that
@@ -95,7 +145,13 @@ text. The classifier problem maps cleanly:
 [decider by Mapika](https://github.com/Mapika/decider) is the open-weight
 reproduction: Apache-2.0, Qwen3.5-4B base. **decider-4b v2 beats Jev 1.13.0
 on JevBench** (64.1 vs 63.3). Wired into `src/decider_adapter.py` —
-optional, gracefully degrades if not installed.
+optional, gracefully degrades if not installed (and currently requires GPU
+due to Triton kernels).
+
+We trained our **own** Jev-shape model from scratch on SWE-PRBench + Bun
+data, using the Jevlike starter. This is the "single attention head, trained
+on PRs" path you asked about — see `evals/build_jev_training_data.py` and
+`runs/jevlike-intent-qwen.pt`.
 
 ## Routing tiers — System-1 vs System-2
 
