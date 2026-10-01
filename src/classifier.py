@@ -507,6 +507,12 @@ def classify_pr_ontology(
           and "documentation" not in surfaces
           and len(signals.get("ci", [])) + len(signals.get("build_file", [])) >= max(1, n_app)):
         intent = "build_ci"
+    # 3c. Build/CI dominates over documentation when CI file count >= docs count
+    elif ("build_ci" in surfaces
+          and "documentation" in surfaces
+          and len(signals.get("ci", [])) + len(signals.get("build_file", [])) >= len(signals.get("docs", []))
+          and "app_code" not in surfaces):
+        intent = "build_ci"
     # 4. Surface clear (one signal, no app_code)
     elif len(surfaces) == 1 and "app_code" not in surfaces:
         # Trust the single surface signal
