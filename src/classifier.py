@@ -259,7 +259,16 @@ TITLE_FEATURE = re.compile(
     r"(add|enable) .* (support|capability)|"
     r"(?:^|\W)(sdk|api|cli|gui|ui|frontend|backend):|"
     r"refining|refine\b|abstraction\b|"
-    r"(?:^|\W)(?:tutorial|example|integration)\b)\b",
+    r"(?:^|\W)(?:tutorial|example|integration)\b|"
+    r"\b(api|plugin|provider|adapter|backend|frontend|cli|module|library|driver|client|server)"
+    r"\b(?:\s+(for|to|with|that))\b|"
+    r"\b(?:cmd|tool|util|utility|script)-\w+:|"
+    r"\bfallback\b.*\b(api|function)|"
+    r"\b(experimental|new)\b.*\b(method|api|module)\b|"
+    r"\b(?:support|allow|enable|introduce)\b.*\b(for|of)\b.*\b(api|feature|capability)\b|"
+    r"\bPR\b:|"
+    r"\btransform\b.*\b(in|to|into)\b|"
+    r"\b(extend|extending)\b.+ \b(tests?|support|coverage|validation|api)\b)\b",
     re.I,
 )
 TITLE_REFACTOR = re.compile(r"\b(refactor|cleanup|clean up|reorganize|rename|restructure|simplify)\b", re.I)
