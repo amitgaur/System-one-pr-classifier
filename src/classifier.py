@@ -203,8 +203,46 @@ CRYPTO_OR_FFI = re.compile(r"(/crypto/|/tls/|/x509/|/certs/|ffi\.|libffi|tinycc|
 CONCURRENCY = re.compile(r"(threading\.Lock|asyncio\.Lock|atomic\.|Mutex<|Arc<|RwLock|std::sync)", re.I)
 EXPERIMENTAL_BRANCH = re.compile(r"(worktree-|/wip|/wip-|/worktree-|/experimental|/spike|/throwaway)", re.I)
 
+EXP_CONVENTIONAL_PREFIX = re.compile(
+    r"^\s*(?:\w[\w.-]*\s*)?(?:\(([a-zA-Z][\w./-]*)\)|\[([a-zA-Z][\w./-]*)\])\s*[:\-]?\s*",
+    re.I,
+)
+# Plain prefix without scope: "fix: something", "feat: something", etc.
+EXP_PLAIN_PREFIX = re.compile(r"^\s*(fix|feat|chore|docs?|test|refactor|perf|build|ci|deps?|security|hotfix|bugfix)(?:\(|:\s|\s)",
+                               re.I)
+EXP_SCOPE_TO_INTENT = {
+    "docs": "docs",
+    "doc": "docs",
+    "documentation": "docs",
+    "test": "test",
+    "tests": "test",
+    "feat": "feature",
+    "feature": "feature",
+    "features": "feature",
+    "fix": "bug_fix",
+    "bugfix": "bug_fix",
+    "hotfix": "bug_fix",
+    "bug": "bug_fix",
+    "perf": "perf",
+    "performance": "perf",
+    "refactor": "refactor",
+    "chore": "chore",
+    "build": "build_ci",
+    "ci": "build_ci",
+    "deps": "chore",
+    "dep": "chore",
+    "security": "security_patch",
+    "sec": "security_patch",
+}
+
+
 # Title heuristics
-TITLE_BUG = re.compile(r"\b(fix|bug|broken|crash|error|exception|regression|null|undefined|typo)\b", re.I)
+TITLE_BUG = re.compile(
+    r"\b(fix|fixes|fixed|fixing|bug|bugs|broken|crash(es|ed)?|errorprone|"
+    r"errors?|exception|exceptions|regression|null|undefined|typo|typos|"
+    r"errcheck|defect|correct|resolve[ds]?|resolution)\b",
+    re.I,
+)
 TITLE_FEATURE = re.compile(
     r"\b(feat|feature|add|support|introduce|enable|allow|implement|"
     r"new|update to|update .* (to|for|with)|"
@@ -483,26 +521,44 @@ def classify_pr_ontology(
 
     # Fallback: title heuristics, ONLY when surface is ambiguous
     if intent is None:
-        if TITLE_REVERT.search(text):
-            intent = "revert"
-        elif TITLE_SECURITY.search(text):
-            intent = "security_patch"
-        elif TITLE_PERF.search(text):
-            intent = "perf"
-        elif TITLE_CI.search(text):
-            intent = "build_ci"
-        elif TITLE_DEPEND.search(text):
-            intent = "chore"
-        elif TITLE_CHORE.search(text):
-            intent = "chore"
-        elif TITLE_BUG.search(text):
-            intent = "bug_fix"
-        elif TITLE_REFACTOR.search(text):
-            intent = "refactor"
-        elif TITLE_FEATURE.search(text):
-            intent = "feature"
-        elif TITLE_DOCS.search(text):
-            intent = "docs"
+        # Conventional-commit style scope prefix takes precedence over keyword matching.
+        # e.g. "(docs): Fix Vale warnings" -> docs (scope) wins over fix (keyword).
+        m = EXP_CONVENTIONAL_PREFIX.match(text)
+        if m:
+            scope = (m.group(1) or m.group(2) or "").lower()
+            intent = EXP_SCOPE_TO_INTENT.get(scope)
+            if intent is None:
+                # Unknown scope - fall through to keyword matching
+                intent = None
+        # Plain prefix without parens (e.g. "fix: foo")
+        if intent is None:
+            pm = EXP_PLAIN_PREFIX.match(text)
+            if pm:
+                keyword = pm.group(1).lower()
+                intent = EXP_SCOPE_TO_INTENT.get(keyword)
+                if intent is None:
+                    intent = None
+        if intent is None:
+            if TITLE_REVERT.search(text):
+                intent = "revert"
+            elif TITLE_SECURITY.search(text):
+                intent = "security_patch"
+            elif TITLE_PERF.search(text):
+                intent = "perf"
+            elif TITLE_CI.search(text):
+                intent = "build_ci"
+            elif TITLE_DEPEND.search(text):
+                intent = "chore"
+            elif TITLE_CHORE.search(text):
+                intent = "chore"
+            elif TITLE_BUG.search(text):
+                intent = "bug_fix"
+            elif TITLE_REFACTOR.search(text):
+                intent = "refactor"
+            elif TITLE_FEATURE.search(text):
+                intent = "feature"
+            elif TITLE_DOCS.search(text):
+                intent = "docs"
 
     if intent is None:
         intent = "mixed_or_unclear"
